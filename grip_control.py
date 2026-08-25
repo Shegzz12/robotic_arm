@@ -6,8 +6,8 @@ from time import sleep
 # ==========================================
 # USER CONFIGURATION (SET YOUR ANGLE LIMITS)
 # ==========================================
-MIN_ANGLE = 15.0   # Closed grip position in degrees (0 to 180)
-MAX_ANGLE = 150.0   # Open grip position in degrees (0 to 180)
+MIN_ANGLE = 90.0   # Closed grip position in degrees (0 to 180)
+MAX_ANGLE = 130.0   # Open grip position in degrees (0 to 180)
 
 # Connect to pigpio daemon
 factory = PiGPIOFactory()
@@ -15,8 +15,8 @@ factory = PiGPIOFactory()
 PULSE_MIN = 0.5 / 1000
 PULSE_MAX = 2.5 / 1000
 
-# Initialize GPIO 18 (Physical Pin 12)
-grip = Servo(18, pin_factory=factory, min_pulse_width=PULSE_MIN, max_pulse_width=PULSE_MAX)
+# Initialize GPIO 23 (Physical Pin 16)
+grip = Servo(23, pin_factory=factory, min_pulse_width=PULSE_MIN, max_pulse_width=PULSE_MAX)
 
 
 # ==========================================
@@ -59,7 +59,7 @@ def move_to_angle_smooth(servo, start_angle, end_angle, steps=50, step_delay=0.0
 # MAIN CONTROL LOOP
 # ==========================================
 print("==========================================")
-print("     GPIO 18 GRIPPER VERIFICATION TEST    ")
+print("     GPIO 23 GRIPPER VERIFICATION TEST    ")
 print("==========================================")
 
 current_angle = MAX_ANGLE
@@ -82,4 +82,4 @@ except KeyboardInterrupt:
 
 finally:
     grip.detach()
-    print("Servo on GPIO 18 detached safely.")
+    print("Servo on GPIO 23 detached safely.")
