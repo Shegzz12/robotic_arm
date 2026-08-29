@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lime Snap & Detect</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .panel h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .video-container {
+            position: relative;
+        }
+
+        .video-feed {
+            width: 100%;
+            border-radius: 10px;
+            background: #000;
+            min-height: 400px;
+            object-fit: contain;
+        }
+
+        .snap-button {
+            width: 100%;
+            padding: 15px;
+            margin-top: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .snap-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .snap-button:active {
+            transform: translateY(0);
+        }
+
+        .snap-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-container {
+            margin-top: 20px;
+        }
+
+        .result-image {
+            width: 100%;
+            border-radius: 10px;
+            background: #000;
+            min-height: 300px;
+            object-fit: contain;
+            display: none;
+        }
+
+        .detections {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .detections h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .detection-item {
+            background: white;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .detection-item.raw {
+            border-left-color: #ffc107;
+        }
+
+        .detection-item.unripe {
+            border-left-color: #ffc107;
+        }
+
+        .detection-item.ripe {
+            border-left-color: #28a745;
+        }
+
+        .detection-item.rotten {
+            border-left-color: #dc3545;
+        }
+
+        .detection-class {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .detection-confidence {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .debug-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .debug-info h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .debug-item {
+            margin-bottom: 5px;
+            color: #666;
+        }
+
+        .no-detections {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-style: italic;
+        }
+
+        .loading {
+            text-align: center;
+            color: #667eea;
+            padding: 20px;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍋 Lime Snap & Detect</h1>
+            <p>Click the button to capture and analyze a single frame</p>
+        </div>
+
+        <div class="dashboard">
+            <div class="panel">
+                <h2>📹 Live Camera Preview</h2>
+                <div class="video-container">
+                    <img id="videoFeed" class="video-feed" src="/video_feed" alt="Camera feed">
+                </div>
+                <button id="snapButton" class="snap-button">📸 Snap & Detect</button>
+            </div>
+
+            <div class="panel">
+                <h2>🔍 Detection Results</h2>
+                <div class="result-container">
+                    <img id="resultImage" class="result-image" src="" alt="Detection result">
+                    
+                    <div id="loadingIndicator" class="loading" style="display: none;">
+                        Processing frame...
+                    </div>
+                    
+                    <div id="detections" class="detections">
+                        <h3>Detections</h3>
+                        <div id="detectionList">
+                            <div class="no-detections">No detection yet. Click "Snap & Detect" to analyze current frame.</div>
+                        </div>
+                    </div>
+                    
+                    <div id="debugInfo" class="debug-info" style="display: none;">
+                        <h3>Debug Information</h3>
+                        <div id="debugContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const snapButton = document.getElementById('snapButton');
+        const resultImage = document.getElementById('resultImage');
+        const detectionList = document.getElementById('detectionList');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const debugInfo = document.getElementById('debugInfo');
+        const debugContent = document.getElementById('debugContent');
+
+        snapButton.addEventListener('click', async () => {
+            // Disable button and show loading
+            snapButton.disabled = true;
+            snapButton.textContent = '⏳ Processing...';
+            loadingIndicator.style.display = 'block';
+            resultImage.style.display = 'none';
+            debugInfo.style.display = 'none';
+
+            try {
+                const response = await fetch('/snap_and_detect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                // Hide loading
+                loadingIndicator.style.display = 'none';
+
+                if (data.success) {
+                    // Show result image
+                    resultImage.src = 'data:image/jpeg;base64,' + data.image;
+                    resultImage.style.display = 'block';
+
+                    // Show detections
+                    if (data.detections.length > 0) {
+                        detectionList.innerHTML = data.detections.map(det => {
+                            const classLower = det.class.toLowerCase();
+                            const confidencePercent = (det.confidence * 100).toFixed(1);
+                            
+                            // Handle both "raw" and "unripe" for CSS styling
+                            let cssClass = classLower;
+                            if (classLower === 'raw') {
+                                cssClass = 'raw'; // Keep 'raw' for CSS
+                            }
+                            
+                            return `
+                                <div class="detection-item ${cssClass}">
+                                    <span class="detection-class">${det.class}</span>
+                                    <span class="detection-confidence">${confidencePercent}%</span>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        detectionList.innerHTML = '<div class="no-detections">No limes detected in this frame</div>';
+                    }
+
+                    // Show debug info
+                    debugInfo.style.display = 'block';
+                    debugContent.innerHTML = `
+                        <div class="debug-item">Frame Shape: ${data.debug_info.frame_shape.join(' x ')}</div>
+                        <div class="debug-item">Frame Stats - Min: ${data.debug_info.frame_stats.min}, Max: ${data.debug_info.frame_stats.max}, Mean: ${data.debug_info.frame_stats.mean.toFixed(2)}</div>
+                        <div class="debug-item">Model Results: ${data.debug_info.num_results}</div>
+                        <div class="debug-item">Total Detections: ${data.debug_info.total_detections}</div>
+                    `;
+
+                } else {
+                    detectionList.innerHTML = `<div class="no-detections" style="color: red;">Error: ${data.error}</div>`;
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                loadingIndicator.style.display = 'none';
+                detectionList.innerHTML = '<div class="no-detections" style="color: red;">Error processing request</div>';
+            } finally {
+                // Re-enable button
+                snapButton.disabled = false;
+                snapButton.textContent = '📸 Snap & Detect';
+            }
+        });
+    </script>
+</body>
+</html>

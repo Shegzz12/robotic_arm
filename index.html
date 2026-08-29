@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lime Classification Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .video-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .video-container h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .video-feed {
+            width: 100%;
+            border-radius: 10px;
+            background: #000;
+            min-height: 400px;
+            object-fit: contain;
+        }
+
+        .info-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .info-container h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-box h3 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+
+        .stat-box p {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .detections {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .detections h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .detection-item {
+            background: white;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .detection-item.ripe {
+            border-left-color: #28a745;
+        }
+
+        .detection-item.raw {
+            border-left-color: #ffc107;
+        }
+
+        .detection-item.unripe {
+            border-left-color: #ffc107;
+        }
+
+        .detection-item.rotten {
+            border-left-color: #dc3545;
+        }
+
+        .detection-class {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .detection-confidence {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .no-detections {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-style: italic;
+        }
+
+        .status {
+            text-align: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .status.active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍋 Lime Classification Dashboard</h1>
+            <p>Real-time AI-powered lime detection and classification</p>
+        </div>
+
+        <div class="dashboard">
+            <div class="video-container">
+                <h2>📹 Live Camera Feed</h2>
+                <img id="videoFeed" class="video-feed" src="/video_feed" alt="Camera feed">
+                <div id="status" class="status inactive">
+                    ⏳ Connecting to camera...
+                </div>
+            </div>
+
+            <div class="info-container">
+                <h2>📊 Detection Results</h2>
+                
+                <div class="stats">
+                    <div class="stat-box">
+                        <h3 id="fps">0</h3>
+                        <p>FPS</p>
+                    </div>
+                    <div class="stat-box">
+                        <h3 id="detectionCount">0</h3>
+                        <p>Detections</p>
+                    </div>
+                </div>
+
+                <div class="detections">
+                    <h3>🔍 Recent Detections</h3>
+                    <div id="detectionList">
+                        <div class="no-detections">Waiting for detections...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const videoFeed = document.getElementById('videoFeed');
+        const status = document.getElementById('status');
+        const fpsElement = document.getElementById('fps');
+        const detectionCountElement = document.getElementById('detectionCount');
+        const detectionList = document.getElementById('detectionList');
+        
+        let detectionHistory = [];
+        const maxHistory = 10;
+
+        // Check if video is loading
+        videoFeed.onload = function() {
+            status.textContent = '✅ Camera connected';
+            status.className = 'status active';
+        };
+
+        videoFeed.onerror = function() {
+            status.textContent = '❌ Camera connection failed';
+            status.className = 'status inactive';
+        };
+
+        // Fetch detections every 500ms
+        setInterval(async () => {
+            try {
+                const response = await fetch('/detections');
+                const data = await response.json();
+                
+                // Update FPS
+                fpsElement.textContent = data.fps.toFixed(1);
+                
+                // Update detection count
+                detectionCountElement.textContent = data.detections.length;
+                
+                // Update detection list
+                if (data.detections.length > 0) {
+                    // Add new detections to history
+                    data.detections.forEach(det => {
+                        const timestamp = new Date().toLocaleTimeString();
+                        detectionHistory.unshift({
+                            ...det,
+                            timestamp: timestamp
+                        });
+                    });
+                    
+                    // Keep only recent detections
+                    detectionHistory = detectionHistory.slice(0, maxHistory);
+                    
+                    // Render detection list
+                    renderDetections();
+                }
+            } catch (error) {
+                console.error('Error fetching detections:', error);
+            }
+        }, 500);
+
+        function renderDetections() {
+            if (detectionHistory.length === 0) {
+                detectionList.innerHTML = '<div class="no-detections">Waiting for detections...</div>';
+                return;
+            }
+
+            detectionList.innerHTML = detectionHistory.map(det => {
+                const classLower = det.class.toLowerCase();
+                const confidencePercent = (det.confidence * 100).toFixed(1);
+                
+                // Handle both "raw" and "unripe" for CSS styling
+                let itemClass = classLower;
+                if (classLower === 'raw') {
+                    itemClass = 'raw'; // Keep 'raw' for CSS
+                }
+                
+                return `
+                    <div class="detection-item ${itemClass}">
+                        <span class="detection-class">${det.class}</span>
+                        <span class="detection-confidence">${confidencePercent}%</span>
+                    </div>
+                `;
+            }).join('');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-Snap Lime Classification</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .panel h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .video-container {
+            position: relative;
+        }
+
+        .video-feed {
+            width: 100%;
+            border-radius: 10px;
+            background: #000;
+            min-height: 400px;
+            object-fit: contain;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .control-button {
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .control-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .control-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .control-button.stop {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .countdown {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            margin-top: 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .countdown.executing {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .result-container {
+            margin-top: 20px;
+        }
+
+        .result-image {
+            width: 100%;
+            border-radius: 10px;
+            background: #000;
+            min-height: 300px;
+            object-fit: contain;
+            display: none;
+        }
+
+        .detections {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .detections h3 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .detection-item {
+            background: white;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .detection-item.raw {
+            border-left-color: #ffc107;
+        }
+
+        .detection-item.unripe {
+            border-left-color: #ffc107;
+        }
+
+        .detection-item.ripe {
+            border-left-color: #28a745;
+        }
+
+        .detection-item.rotten {
+            border-left-color: #dc3545;
+        }
+
+        .detection-class {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .detection-confidence {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .debug-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+
+        .debug-info h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .debug-item {
+            margin-bottom: 5px;
+            color: #666;
+        }
+
+        .status-bar {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-item {
+            text-align: center;
+        }
+
+        .status-label {
+            font-size: 0.8em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .status-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .no-result {
+            text-align: center;
+            color: #999;
+            padding: 40px;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🍋 Auto-Snap Lime Classification</h1>
+            <p>Automatic detection every 20 seconds</p>
+        </div>
+
+        <div class="dashboard">
+            <div class="panel">
+                <h2>📹 Live Camera Preview</h2>
+                <div class="video-container">
+                    <img id="videoFeed" class="video-feed" src="/video_feed" alt="Camera feed">
+                </div>
+                
+                <div class="controls">
+                    <button id="manualSnapButton" class="control-button">📸 Manual Snap</button>
+                    <button id="toggleAutoButton" class="control-button">⏸️ Pause Auto-Snap</button>
+                </div>
+                
+                <div class="countdown" id="countdownContainer">
+                    <span id="countdownStatus">Next auto-snap in:</span> <span id="countdown">20</span> seconds
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>🔍 Latest Detection Result</h2>
+                <div class="result-container">
+                    <img id="resultImage" class="result-image" src="" alt="Detection result">
+                    
+                    <div id="noResult" class="no-result">
+                        Waiting for first auto-snap...
+                    </div>
+                    
+                    <div id="detections" class="detections" style="display: none;">
+                        <h3>Detections</h3>
+                        <div id="detectionList"></div>
+                    </div>
+                    
+                    <div id="debugInfo" class="debug-info" style="display: none;">
+                        <h3>Debug Information</h3>
+                        <div id="debugContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="status-label">Snap Count</div>
+                    <div class="status-value" id="snapCount">0</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Last Snap Time</div>
+                    <div class="status-value" id="lastSnapTime">--:--:--</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Auto-Snap Status</div>
+                    <div class="status-value" id="autoSnapStatus">Active</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Script Status</div>
+                    <div class="status-value" id="scriptStatus">Idle</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Total Detections</div>
+                    <div class="status-value" id="totalDetections">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const manualSnapButton = document.getElementById('manualSnapButton');
+        const toggleAutoButton = document.getElementById('toggleAutoButton');
+        const countdown = document.getElementById('countdown');
+        const resultImage = document.getElementById('resultImage');
+        const noResult = document.getElementById('noResult');
+        const detectionList = document.getElementById('detectionList');
+        const detectionsDiv = document.getElementById('detections');
+        const debugInfo = document.getElementById('debugInfo');
+        const debugContent = document.getElementById('debugContent');
+        const snapCount = document.getElementById('snapCount');
+        const lastSnapTime = document.getElementById('lastSnapTime');
+        const autoSnapStatus = document.getElementById('autoSnapStatus');
+        const scriptStatus = document.getElementById('scriptStatus');
+        const totalDetections = document.getElementById('totalDetections');
+        const countdownContainer = document.getElementById('countdownContainer');
+        const countdownStatus = document.getElementById('countdownStatus');
+
+        let autoSnapEnabled = true;
+
+        // Update countdown and fetch latest result
+        setInterval(async () => {
+            try {
+                const response = await fetch('/latest_result');
+                const data = await response.json();
+
+                // Update countdown
+                countdown.textContent = Math.ceil(data.time_until_next);
+
+                // Update auto-snap status
+                autoSnapEnabled = data.auto_snap_enabled;
+                autoSnapStatus.textContent = autoSnapEnabled ? 'Active' : 'Paused';
+                autoSnapStatus.style.color = autoSnapEnabled ? '#28a745' : '#dc3545';
+                toggleAutoButton.textContent = autoSnapEnabled ? '⏸️ Pause Auto-Snap' : '▶️ Resume Auto-Snap';
+                toggleAutoButton.classList.toggle('stop', autoSnapEnabled);
+
+                // Update script execution status
+                if (data.script_execution_in_progress) {
+                    scriptStatus.textContent = 'Executing...';
+                    scriptStatus.style.color = '#ffc107';
+                    countdownContainer.classList.add('executing');
+                    countdownStatus.textContent = 'Script running, countdown paused:';
+                    manualSnapButton.disabled = true;
+                } else {
+                    scriptStatus.textContent = 'Idle';
+                    scriptStatus.style.color = '#28a745';
+                    countdownContainer.classList.remove('executing');
+                    countdownStatus.textContent = 'Next auto-snap in:';
+                    manualSnapButton.disabled = false;
+                }
+
+                // Update result if available
+                if (data.success && data.image) {
+                    noResult.style.display = 'none';
+                    resultImage.src = 'data:image/jpeg;base64,' + data.image;
+                    resultImage.style.display = 'block';
+
+                    // Update detections
+                    if (data.detections.length > 0) {
+                        detectionsDiv.style.display = 'block';
+                        detectionList.innerHTML = data.detections.map(det => {
+                            const classLower = det.class.toLowerCase();
+                            const confidencePercent = (det.confidence * 100).toFixed(1);
+                            
+                            // Handle both "raw" and "unripe" for CSS styling
+                            let cssClass = classLower;
+                            if (classLower === 'raw') {
+                                cssClass = 'raw'; // Keep 'raw' for CSS
+                            }
+                            
+                            return `
+                                <div class="detection-item ${cssClass}">
+                                    <span class="detection-class">${det.class}</span>
+                                    <span class="detection-confidence">${confidencePercent}%</span>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        detectionsDiv.style.display = 'block';
+                        detectionList.innerHTML = '<div class="no-detections">No limes detected in this frame</div>';
+                    }
+
+                    // Update debug info
+                    debugInfo.style.display = 'block';
+                    debugContent.innerHTML = `
+                        <div class="debug-item">Frame Shape: ${data.debug_info.frame_shape.join(' x ')}</div>
+                        <div class="debug-item">Frame Stats - Min: ${data.debug_info.frame_stats.min}, Max: ${data.debug_info.frame_stats.max}, Mean: ${data.debug_info.frame_stats.mean.toFixed(2)}</div>
+                        <div class="debug-item">Model Results: ${data.debug_info.num_results}</div>
+                        <div class="debug-item">Total Detections: ${data.debug_info.total_detections}</div>
+                    `;
+
+                    // Update status bar
+                    snapCount.textContent = data.snap_count;
+                    lastSnapTime.textContent = data.timestamp.split(' ')[1];
+                    totalDetections.textContent = data.debug_info.total_detections;
+                }
+
+            } catch (error) {
+                console.error('Error fetching latest result:', error);
+            }
+        }, 1000);
+
+        // Manual snap button
+        manualSnapButton.addEventListener('click', async () => {
+            manualSnapButton.disabled = true;
+            manualSnapButton.textContent = '⏳ Snapping...';
+
+            try {
+                const response = await fetch('/manual_snap', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+            } catch (error) {
+                console.error('Error triggering manual snap:', error);
+            } finally {
+                manualSnapButton.disabled = false;
+                manualSnapButton.textContent = '📸 Manual Snap';
+            }
+        });
+
+        // Toggle auto-snap button
+        toggleAutoButton.addEventListener('click', async () => {
+            try {
+                const response = await fetch('/toggle_auto_snap', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                
+                autoSnapEnabled = data.auto_snap_enabled;
+                autoSnapStatus.textContent = autoSnapEnabled ? 'Active' : 'Paused';
+                autoSnapStatus.style.color = autoSnapEnabled ? '#28a745' : '#dc3545';
+                toggleAutoButton.textContent = autoSnapEnabled ? '⏸️ Pause Auto-Snap' : '▶️ Resume Auto-Snap';
+                toggleAutoButton.classList.toggle('stop', autoSnapEnabled);
+                
+            } catch (error) {
+                console.error('Error toggling auto-snap:', error);
+            }
+        });
+    </script>
+</body>
+</html>
